@@ -1240,17 +1240,20 @@ class GroupBy(BaseGroupBy[NDFrameT]):
         args, kwargs = prepare_function_arguments(
             func, args, kwargs, num_required_args=2
         )
-        numba_agg_func = numba_.generate_numba_agg_func(
-            func, **get_jit_arguments(engine_kwargs)
-        )
-        result = numba_agg_func(
-            sorted_data,
-            sorted_index,
-            starts,
-            ends,
-            len(df.columns),
-            *args,
-        )
+        if len(starts) == 0 or len(df.columns) == 0:
+            result = np.empty((len(starts), len(df.columns)))
+        else:
+            numba_agg_func = numba_.generate_numba_agg_func(
+                func, **get_jit_arguments(engine_kwargs)
+            )
+            result = numba_agg_func(
+                sorted_data,
+                sorted_index,
+                starts,
+                ends,
+                len(df.columns),
+                *args,
+            )
         index = self._grouper.result_index
         if data.ndim == 1:
             result_kwargs = {"name": data.name}

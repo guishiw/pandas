@@ -325,11 +325,11 @@ def test_args_not_cached():
     df = pd.DataFrame({"id": [0, 0, 1, 1], "x": [1, 1, 1, 1]})
     grouped_x = df.groupby("id")["x"]
     result = grouped_x.agg(sum_last, 1, engine="numba")
-    expected = pd.Series([1.0] * 2, name="x", index=pd.Index([0, 1], name="id"))
+    expected = pd.Series([1] * 2, name="x", index=pd.Index([0, 1], name="id"))
     tm.assert_series_equal(result, expected)
 
     result = grouped_x.agg(sum_last, 2, engine="numba")
-    expected = pd.Series([2.0] * 2, name="x", index=pd.Index([0, 1], name="id"))
+    expected = pd.Series([2] * 2, name="x", index=pd.Index([0, 1], name="id"))
     tm.assert_series_equal(result, expected)
 
 
@@ -348,6 +348,22 @@ def test_index_data_correctly_passed():
     tm.assert_frame_equal(result, expected)
 
 
+def test_udf_result_dtype(frame_or_series):
+    # GH 58869
+    def return_one(values, index):
+        return np.int64(1)
+
+    df = pd.DataFrame({"group": [1, 1, 2, 2, 2], "value": [1, 1, 2, 3, 2]})
+    grouped = df.groupby("group")
+    if frame_or_series is pd.Series:
+        grouped = grouped["value"]
+
+    result = grouped.agg(return_one, engine="numba")
+    expected = grouped.agg(lambda values: np.int64(1))
+
+    tm.assert_equal(result, expected)
+
+
 def test_engine_kwargs_not_cached():
     # If the user passes a different set of engine_kwargs don't return the same
     # jitted function
@@ -363,7 +379,7 @@ def test_engine_kwargs_not_cached():
     result = df.groupby(level=0).aggregate(
         func_kwargs, engine="numba", engine_kwargs=engine_kwargs
     )
-    expected = pd.DataFrame({"value": [1.0, 1.0, 1.0]})
+    expected = pd.DataFrame({"value": [1, 1, 1]})
     tm.assert_frame_equal(result, expected)
 
     nogil = False
@@ -371,7 +387,7 @@ def test_engine_kwargs_not_cached():
     result = df.groupby(level=0).aggregate(
         func_kwargs, engine="numba", engine_kwargs=engine_kwargs
     )
-    expected = pd.DataFrame({"value": [0.0, 0.0, 0.0]})
+    expected = pd.DataFrame({"value": [0, 0, 0]})
     tm.assert_frame_equal(result, expected)
 
 
@@ -387,7 +403,7 @@ def test_multiindex_one_key(nogil, parallel):
     result = df.groupby("A").agg(
         numba_func, engine="numba", engine_kwargs=engine_kwargs
     )
-    expected = pd.DataFrame([1.0], index=pd.Index([1], name="A"), columns=["C"])
+    expected = pd.DataFrame([1], index=pd.Index([1], name="A"), columns=["C"])
     tm.assert_frame_equal(result, expected)
 
 

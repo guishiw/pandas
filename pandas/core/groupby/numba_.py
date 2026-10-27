@@ -109,10 +109,19 @@ def generate_numba_agg_func(
         assert len(begin) == len(end)
         num_groups = len(begin)
 
-        result = np.empty((num_groups, num_columns))
+        first_group_index = index[begin[0] : end[0]]
+        first_result = numba_func(
+            values[begin[0] : end[0], 0], first_group_index, *args
+        )
+        result = np.empty(
+            (num_groups, num_columns), dtype=np.asarray(first_result).dtype
+        )
+        result[0, 0] = first_result
         for i in numba.prange(num_groups):
             group_index = index[begin[i] : end[i]]
             for j in numba.prange(num_columns):
+                if i == 0 and j == 0:
+                    continue
                 group = values[begin[i] : end[i], j]
                 result[i, j] = numba_func(group, group_index, *args)
         return result
