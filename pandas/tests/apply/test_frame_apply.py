@@ -397,6 +397,21 @@ def test_apply_raw_float_frame_no_reduction(float_frame, engine):
     tm.assert_frame_equal(result, expected)
 
 
+@pytest.mark.parametrize(
+    "df, axis",
+    [
+        (pd.DataFrame({"A": [1, 2, 3]}), 0),
+        (pd.DataFrame([[1, 2, 3]], columns=list("ABC")), 1),
+    ],
+)
+def test_apply_raw_numba_no_reduction_singleton_axis(df, axis):
+    # GH 60297
+    result = df.apply(lambda x: x, axis=axis, engine="numba", raw=True)
+
+    # Numba apply currently coerces integer results to float.
+    tm.assert_frame_equal(result, df, check_dtype=False)
+
+
 @pytest.mark.parametrize("axis", [0, 1])
 def test_apply_raw_mixed_type_frame(axis, engine):
     if engine == "numba":

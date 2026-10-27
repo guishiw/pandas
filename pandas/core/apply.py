@@ -1301,8 +1301,13 @@ class FrameApply(NDFrameApply):
                 **get_jit_arguments(engine_kwargs),
             )
             result = nb_looper(self.values, self.axis, *args)
-            # If we made the result 2-D, squeeze it back to 1-D
-            result = np.squeeze(result)
+            # Scalar results are returned with a length-one dimension. Remove
+            # only that dimension so a non-reduction result keeps its 2-D
+            # shape when the input has a single row or column (GH 60297).
+            if self.axis == 0 and result.shape[0] == 1:
+                result = result[0]
+            elif self.axis == 1 and result.shape[1] == 1:
+                result = result[:, 0]
         else:
             result = np.apply_along_axis(
                 wrap_function(self.func),
